@@ -78,8 +78,7 @@ def add_item(
     if not category:
         raise HTTPException(status_code=400, detail="category is required")
     
-    insert_item(Item(name=name))
-    insert_item(Item(category=category))
+    insert_item(Item(name=name, category=category))
     return AddItemResponse(**{"message": f"item received: {name}, {category}"})
 
 
@@ -100,17 +99,16 @@ async def get_image(image_name):
 
 
 class Item(BaseModel):
-    name: str
+    name:str
     category:str
 
 
 def insert_item(item: Item):
     # STEP 4-1: add an implementation to store an item
-    pass
     with open('items.json') as f:
         d_update = json.load(f)
 
-    d = {'name' : Item.name, 'categry': Item.category}
+    d = {'name' : item.name, 'category': item.category}
     d_update['items'].append(d)
 
     with open('items.json', 'w') as f:
