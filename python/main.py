@@ -79,8 +79,13 @@ def add_item(
         raise HTTPException(status_code=400, detail="category is required")
     
     insert_item(Item(name=name, category=category))
-    return AddItemResponse(**{"message": f"item received: {name}, {category}"})
+    return AddItemResponse(**{"message": f"item received: {name}"})
 
+@app.get("/items")
+def get_items():
+    with open('items.json') as f:
+        d_update = json.load(f)
+    return d_update
 
 # get_image is a handler to return an image for GET /images/{filename} .
 @app.get("/image/{image_name}")
@@ -113,4 +118,7 @@ def insert_item(item: Item):
 
     with open('items.json', 'w') as f:
         json.dump(d_update, f, indent=2)
+
+
+
 
