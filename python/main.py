@@ -1,14 +1,15 @@
 import os
 import logging
 import pathlib
-from fastapi import FastAPI, Form, HTTPException, Depends
+from fastapi import FastAPI, Form, HTTPException, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import json
-
+import hashlib
+import shutil
 
 # Define the path to the images & sqlite3 database
 images = pathlib.Path(__file__).parent.resolve() / "images"
@@ -68,17 +69,27 @@ class AddItemResponse(BaseModel):
 
 # add_item is a handler to add a new item for POST /items .
 @app.post("/items", response_model=AddItemResponse)
-def add_item(
+async def add_item(
     name: str = Form(...),
     category: str = Form(...),
+    image: UploadFile = File(...),
     db: sqlite3.Connection = Depends(get_db),
 ):
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
         raise HTTPException(status_code=400, detail="category is required")
+    if not image:
+        raise HTTPException(status_code=400, detail="image is required")
+
+    image_bin = await image.read()
+    sha256 = hashlib.sha256(image_bin).hexdigest()
     
-    insert_item(Item(name=name, category=category))
+    insert_item(Item(name=name, category=category, image=sha256))
+
+    with open('images/' + sha256 + '.jpg', 'wb') as f:
+        f.write(image_bin)
+
     return AddItemResponse(**{"message": f"item received: {name}"})
 
 @app.get("/items")
@@ -106,14 +117,14 @@ async def get_image(image_name):
 class Item(BaseModel):
     name:str
     category:str
-
+    image:str
 
 def insert_item(item: Item):
     # STEP 4-1: add an implementation to store an item
     with open('items.json') as f:
         d_update = json.load(f)
 
-    d = {'name' : item.name, 'category': item.category}
+    d = {'name' : item.name, 'category': item.category, 'image_name':item.image}
     d_update['items'].append(d)
 
     with open('items.json', 'w') as f:
