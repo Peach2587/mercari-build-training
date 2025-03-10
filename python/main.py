@@ -78,6 +78,12 @@ def add_item(
     return AddItemResponse(**{"message": f"item received: {name}"})
 
 
+@app.get("/items/{item_id}")
+def get_items(item_id:int):
+    with open('items.json') as f:
+        d_update = json.load(f)
+    return d_update['items'][item_id]
+
 # get_image is a handler to return an image for GET /images/{filename} .
 @app.get("/image/{image_name}")
 async def get_image(image_name):
