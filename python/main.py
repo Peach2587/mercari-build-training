@@ -30,10 +30,14 @@ def get_db():
 
 # STEP 5-1: set up the database connection
 def setup_database():
+    # pass
     conn = sqlite3.connect("db/mercari.sqlite3")
     cursor = conn.cursor()
-    
-
+    sql_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
+    with open(sql_file, "r") as f:
+        cursor.executescript(f.read())
+    conn.commit()
+    conn.close()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -80,24 +84,27 @@ async def add_item(
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
         raise HTTPException(status_code=400, detail="category is required")
-    if not image:
-        raise HTTPException(status_code=400, detail="image is required")
+    # STEP6 のためにコメントアウトしておく（念のため）
+    # if not image:
+    #     raise HTTPException(status_code=400, detail="image is required")
 
     image_bin = await image.read()
-    sha256 = hashlib.sha256(image_bin).hexdigest()
+    hashed_image = hashlib.sha256(image_bin).hexdigest()
     
-    insert_item(Item(name=name, category=category, image=sha256))
+    insert_item(Item(name=name, category=category, image=hashed_image), db)
 
-    with open('images/' + sha256 + '.jpg', 'wb') as f:
+    with open('images/' + hashed_image + '.jpg', 'wb') as f:
         f.write(image_bin)
 
     return AddItemResponse(**{"message": f"item received: {name}"})
 
 @app.get("/items")
 def get_items():
-    with open('items.json') as f:
-        d_update = json.load(f)
-    return d_update
+    with sqlite3.connect(db) as db:
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM items")  
+        rows = cursor.fetchall()
+    return rows
 
 @app.get("/items/{item_id}")
 def get_items(item_id:int):
@@ -126,25 +133,13 @@ class Item(BaseModel):
     name:str
     category:str
     image:str
-    db: sqlite3.Connection
 
-def insert_item(item: Item):
-    # # STEP 4-1: add an implementation to store an item
-    # with open('items.json') as f:
-    #     d_update = json.load(f)
-
-    d = {'name' : item.name, 'category': item.category, 'image_name':item.image}
-    # d_update['items'].append(d)
-
-    # with open('items.json', 'w') as f:
-    #     json.dump(d_update, f, indent=2)
-    
+def insert_item(item: Item, db: sqlite3.Connection):
     # STEP 5 : add an implementation to store an item in the database
-    cursor.execute("""
-    INSERT INTO items (name, category, image_name) 
-    VALUES (:name, :category, :image_name)
-    """, d)
-
-
-
-
+    cursor = db.cursor()
+    cursor.execute('''
+            INSERT INTO items (name, category, image)
+            VALUES (?, ?, ?)
+        ''', (item.name, item.category, item.image))
+    db.commit()
+    db.close()
