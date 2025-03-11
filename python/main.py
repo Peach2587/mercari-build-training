@@ -79,15 +79,16 @@ async def add_item(
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
         raise HTTPException(status_code=400, detail="category is required")
-    if not image:
-        raise HTTPException(status_code=400, detail="image is required")
+    # STEP6 のためにコメントアウトしておく（念のため）
+    # if not image:
+    #     raise HTTPException(status_code=400, detail="image is required")
 
     image_bin = await image.read()
-    sha256 = hashlib.sha256(image_bin).hexdigest()
+    hashed_image = hashlib.sha256(image_bin).hexdigest()
     
-    insert_item(Item(name=name, category=category, image=sha256))
+    insert_item(Item(name=name, category=category, image=hashed_image))
 
-    with open('images/' + sha256 + '.jpg', 'wb') as f:
+    with open('images/' + hashed_image + '.jpg', 'wb') as f:
         f.write(image_bin)
 
     return AddItemResponse(**{"message": f"item received: {name}"})
@@ -135,7 +136,3 @@ def insert_item(item: Item):
 
     with open('items.json', 'w') as f:
         json.dump(d_update, f, indent=2)
-
-
-
-
