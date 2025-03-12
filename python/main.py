@@ -100,6 +100,7 @@ async def add_item(
 
 @app.get("/items")
 def get_items():
+    global db
     with sqlite3.connect(db) as db:
         cursor = db.cursor()
         cursor.execute("SELECT * FROM items")  
