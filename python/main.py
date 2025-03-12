@@ -1,7 +1,7 @@
 import os
 import logging
 import pathlib
-from fastapi import FastAPI, Form, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, Form, HTTPException, Depends, UploadFile, File, Query
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
@@ -93,7 +93,7 @@ def add_item(
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
         raise HTTPException(status_code=400, detail="category is required")
-    # STEP6 のためにコメントアウトしておく（念のため）
+    #STEP6 のためにコメントアウトしておく（念のため）
     # if not image:
     #     raise HTTPException(status_code=400, detail="image is required")
 
@@ -109,13 +109,17 @@ def add_item(
 
 @app.get("/items")
 def get_items():
-    print("get_items:", threading.get_ident())
-    global db
-    with sqlite3.connect(db) as DB:
-        cursor = DB.cursor()
-        cursor.execute("SELECT * FROM items")  
-        rows = cursor.fetchall()
-    return rows
+    # print("get_items:", threading.get_ident())
+    with sqlite3.connect(db) as conn:
+        # conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('''
+                       SELECT * FROM items
+                       ''')
+        col_name = [d[0] for d in cursor.description]
+        items = cursor.fetchall()   
+    
+    return items
 
 @app.get("/items/{item_id}")
 def get_items(item_id:int):
@@ -138,6 +142,17 @@ async def get_image(image_name):
         image = images / "default.jpg"
 
     return FileResponse(image)
+
+@app.get("/search")
+def search_keyword(keyword):
+    with sqlite3.connect(db) as DB:
+        cursor = DB.cursor()
+        cursor.execute('''
+                        SELECT * FROM items 
+                        WHERE name like ?
+                       ''', ('%' + keyword + '%',))
+        rows = cursor.fetchall()
+    return rows
 
 
 class Item(BaseModel):
