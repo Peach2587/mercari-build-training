@@ -111,15 +111,16 @@ def add_item(
 def get_items():
     # print("get_items:", threading.get_ident())
     with sqlite3.connect(db) as conn:
-        # conn.row_factory = sqlite3.Row
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute('''
                        SELECT * FROM items
                        ''')
-        col_name = [d[0] for d in cursor.description]
-        items = cursor.fetchall()   
+        col_names = [d[0] for d in cursor.description]
+        rows = cursor.fetchall()
+        items = [{colname:row[colname] for colname in col_names} for row in rows]
     
-    return items
+    return {'items' : items}
 
 @app.get("/items/{item_id}")
 def get_items(item_id:int):
@@ -145,14 +146,18 @@ async def get_image(image_name):
 
 @app.get("/search")
 def search_keyword(keyword):
-    with sqlite3.connect(db) as DB:
-        cursor = DB.cursor()
+    with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
         cursor.execute('''
                         SELECT * FROM items 
                         WHERE name like ?
                        ''', ('%' + keyword + '%',))
         rows = cursor.fetchall()
-    return rows
+        col_names = ['name', 'category']
+        items = [{colname:row[colname] for colname in col_names} for row in rows]
+    
+    return {'items' : items}
 
 
 class Item(BaseModel):
