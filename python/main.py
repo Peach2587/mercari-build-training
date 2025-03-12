@@ -11,6 +11,7 @@ import json
 import hashlib
 import sqlite3
 import threading
+import time
 
 # Define the path to the images & sqlite3 database
 images = pathlib.Path(__file__).parent.resolve() / "images"
@@ -18,7 +19,7 @@ db = pathlib.Path(__file__).parent.resolve() / "db" / "mercari.sqlite3"
 
 
 def get_db():
-    print("get_db:", threading.get_ident())
+    # print("get_db:", threading.get_ident())
     if not db.exists():
         yield
 
@@ -28,7 +29,7 @@ def get_db():
         yield conn
     finally:
         conn.close()
-
+        # print("クローズしましたにゃ : get_db")
 
 # STEP 5-1: set up the database connection
 def setup_database():
@@ -44,7 +45,7 @@ def setup_database():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("lifespan:", threading.get_ident())
+    # print("lifespan:", threading.get_ident())
     setup_database()
     yield
 
@@ -78,13 +79,16 @@ class AddItemResponse(BaseModel):
 
 # add_item is a handler to add a new item for POST /items .
 @app.post("/items", response_model=AddItemResponse)
-async def add_item(
+def add_item(
     name: str = Form(...),
     category: str = Form(...),
     image: UploadFile = File(...),
     db: sqlite3.Connection = Depends(get_db),
 ):
-    print("add_item:", threading.get_ident())    
+    # print("add_item:", threading.get_ident())
+    # print("add_item: すやすや...")
+    # time.sleep(10)
+    # print("add_item: ハッ！")
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
@@ -93,7 +97,7 @@ async def add_item(
     # if not image:
     #     raise HTTPException(status_code=400, detail="image is required")
 
-    image_bin = await image.read()
+    image_bin = image.file.read()
     hashed_image = hashlib.sha256(image_bin).hexdigest()
     
     insert_item(Item(name=name, category=category, image=hashed_image), db)
@@ -144,8 +148,7 @@ class Item(BaseModel):
 
 def insert_item(item: Item, db: sqlite3.Connection):
     # STEP 5 : add an implementation to store an item in the database
-    #conn = sqlite3.connect(db)
-    print("insert_item:", threading.get_ident()) 
+    # print("insert_item:", threading.get_ident()) 
     cursor = db.cursor()
     cursor.execute('''
             INSERT INTO items (name, category, image)
