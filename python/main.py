@@ -96,10 +96,10 @@ def add_item(
     # print("add_item: すやすや...")
     # time.sleep(10)
     # print("add_item: ハッ！")
-    # if not name:
-    #     raise HTTPException(status_code=400, detail="name is required")
-    # if not category:
-    #     raise HTTPException(status_code=400, detail="category is required")
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    if not category:
+        raise HTTPException(status_code=400, detail="category is required")
     #STEP6 のためにコメントアウトしておく（念のため）
     # if not image:
     #     raise HTTPException(status_code=400, detail="image is required")
@@ -177,9 +177,10 @@ def insert_item(item: Item, db: sqlite3.Connection):
     # STEP 5 : add an implementation to store an item in the database
     # print("insert_item:", threading.get_ident()) 
     cursor = db.cursor()
+    # rewrite for STEP6-3
     cursor.execute('''
-            INSERT INTO items (name, category, image)
-            VALUES (?, ?, ?)
-        ''', (item.name, item.category, item.image))
+            INSERT INTO items (name, category)
+            VALUES (?, ?)
+        ''', (item.name, item.category))
     db.commit()
     cursor.close()
