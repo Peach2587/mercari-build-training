@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 import json
 import hashlib
 import sqlite3
+import threading
 
 # Define the path to the images & sqlite3 database
 images = pathlib.Path(__file__).parent.resolve() / "images"
@@ -17,6 +18,7 @@ db = pathlib.Path(__file__).parent.resolve() / "db" / "mercari.sqlite3"
 
 
 def get_db():
+    print("get_db:", threading.get_ident())
     if not db.exists():
         yield
 
@@ -30,17 +32,19 @@ def get_db():
 
 # STEP 5-1: set up the database connection
 def setup_database():
-    # pass
-    conn = sqlite3.connect("db/mercari.sqlite3")
-    cursor = conn.cursor()
-    sql_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
-    with open(sql_file, "r") as f:
-        cursor.executescript(f.read())
-    conn.commit()
-    conn.close()
+    pass
+    # print("setup_database:", threading.get_ident())
+    # conn = sqlite3.connect(db)
+    # cursor = conn.cursor()
+    # sql_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
+    # with open(sql_file, "r") as f:
+    #     cursor.executescript(f.read())
+    # conn.commit()
+    # conn.close()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("lifespan:", threading.get_ident())
     setup_database()
     yield
 
@@ -80,6 +84,7 @@ async def add_item(
     image: UploadFile = File(...),
     db: sqlite3.Connection = Depends(get_db),
 ):
+    print("add_item:", threading.get_ident())    
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
@@ -100,9 +105,10 @@ async def add_item(
 
 @app.get("/items")
 def get_items():
+    print("get_items:", threading.get_ident())
     global db
-    with sqlite3.connect(db) as db:
-        cursor = db.cursor()
+    with sqlite3.connect(db) as DB:
+        cursor = DB.cursor()
         cursor.execute("SELECT * FROM items")  
         rows = cursor.fetchall()
     return rows
@@ -135,12 +141,15 @@ class Item(BaseModel):
     category:str
     image:str
 
+
 def insert_item(item: Item, db: sqlite3.Connection):
     # STEP 5 : add an implementation to store an item in the database
+    #conn = sqlite3.connect(db)
+    print("insert_item:", threading.get_ident()) 
     cursor = db.cursor()
     cursor.execute('''
             INSERT INTO items (name, category, image)
             VALUES (?, ?, ?)
         ''', (item.name, item.category, item.image))
     db.commit()
-    db.close()
+    cursor.close()
