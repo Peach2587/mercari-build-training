@@ -114,13 +114,16 @@ def get_items():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute('''
-                       SELECT * FROM items
+                    SELECT items.id, items.name, categories.name, items.image
+                    FROM items
+                    LEFT JOIN categories
+                            ON categories.id = items.category_id
                        ''')
         col_names = [d[0] for d in cursor.description]
         rows = cursor.fetchall()
-        items = [{colname:row[colname] for colname in col_names} for row in rows]
-    
-    return {'items' : items}
+        # items = [{colname:row[colname] for colname in col_names} for row in rows]
+    return rows
+    # return {'items' : items}
 
 @app.get("/items/{item_id}")
 def get_items(item_id:int):
@@ -171,8 +174,17 @@ def insert_item(item: Item, db: sqlite3.Connection):
     # print("insert_item:", threading.get_ident()) 
     cursor = db.cursor()
     cursor.execute('''
-            INSERT INTO items (name, category, image)
+            INSERT OR IGNORE INTO categories (name)
+            VALUES (?)
+        ''', (item.category,))
+    cursor.execute('''
+            SELECT id FROM categories 
+            WHERE name =  ?
+        ''', (item.category,))
+    category_id = cursor.fetchone()[0]
+    cursor.execute('''
+            INSERT INTO items (name, category_id, image)
             VALUES (?, ?, ?)
-        ''', (item.name, item.category, item.image))
+        ''', (item.name, category_id, item.image))
     db.commit()
     cursor.close()
