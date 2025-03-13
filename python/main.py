@@ -12,6 +12,7 @@ import hashlib
 import sqlite3
 import threading
 import time
+import datetime
 
 # Define the path to the images & sqlite3 database
 images = pathlib.Path(__file__).parent.resolve() / "images"
@@ -19,8 +20,13 @@ db = pathlib.Path(__file__).parent.resolve() / "db" / "mercari.sqlite3"
 
 
 def get_db():
-    # print("get_db:", threading.get_ident())
+    print("get_db:", threading.get_ident())
+    # filename = f'tmp/{datetime.datetime.now()}.txt'
+    # with open(filename, 'w') as f:
+    #     print("strat logging", file = f)
     if not db.exists():
+        # with open(filename, 'w') as f:
+        #     print("実在しませんでした（´-`）.｡oO", file = f)
         yield
 
     conn = sqlite3.connect(db)
@@ -29,26 +35,27 @@ def get_db():
         yield conn
     finally:
         conn.close()
-        # print("クローズしましたにゃ : get_db")
+        print("クローズしましたにゃ : get_db")
 
 # STEP 5-1: set up the database connection
 def setup_database():
-    pass
-    # print("setup_database:", threading.get_ident())
-    # conn = sqlite3.connect(db)
-    # cursor = conn.cursor()
-    # sql_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
-    # with open(sql_file, "r") as f:
-    #     cursor.executescript(f.read())
-    # conn.commit()
-    # conn.close()
+    print("setup_database:", threading.get_ident())
+    conn = sqlite3.connect(db)
+    cursor = conn.cursor()
+    items_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
+    categories_file = pathlib.Path(__file__).parent.resolve() / "db" / "categories.sql"
+    with open(items_file, "r") as f:
+        cursor.executescript(f.read())
+    with open(categories_file, "r") as f:
+        cursor.executescript(f.read())
+    conn.commit()
+    conn.close()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # print("lifespan:", threading.get_ident())
     setup_database()
     yield
-
 
 app = FastAPI(lifespan=lifespan)
 
@@ -82,29 +89,29 @@ class AddItemResponse(BaseModel):
 def add_item(
     name: str = Form(...),
     category: str = Form(...),
-    image: UploadFile = File(...),
+    image: UploadFile = File(None),
     db: sqlite3.Connection = Depends(get_db),
 ):
     # print("add_item:", threading.get_ident())
     # print("add_item: すやすや...")
     # time.sleep(10)
     # print("add_item: ハッ！")
-    if not name:
-        raise HTTPException(status_code=400, detail="name is required")
-    if not category:
-        raise HTTPException(status_code=400, detail="category is required")
+    # if not name:
+    #     raise HTTPException(status_code=400, detail="name is required")
+    # if not category:
+    #     raise HTTPException(status_code=400, detail="category is required")
     #STEP6 のためにコメントアウトしておく（念のため）
     # if not image:
     #     raise HTTPException(status_code=400, detail="image is required")
 
-    image_bin = image.file.read()
-    hashed_image = hashlib.sha256(image_bin).hexdigest()
+    hashed_image = ""
+    if image:
+        image_bin = image.file.read()
+        hashed_image = hashlib.sha256(image_bin).hexdigest()
+        with open('images/' + hashed_image + '.jpg', 'wb') as f:
+            f.write(image_bin)
     
     insert_item(Item(name=name, category=category, image=hashed_image), db)
-
-    with open('images/' + hashed_image + '.jpg', 'wb') as f:
-        f.write(image_bin)
-
     return AddItemResponse(**{"message": f"item received: {name}"})
 
 @app.get("/items")
