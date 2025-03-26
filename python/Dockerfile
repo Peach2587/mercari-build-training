@@ -5,4 +5,10 @@ RUN addgroup -S mercari && adduser -S trainee -G mercari
 
 USER trainee
 
-CMD ["python", "-V"]
+WORKDIR /python
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD ["uvicorn",  "main:app",  "--reload",  "--port",  "9000"]
