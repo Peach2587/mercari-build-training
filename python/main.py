@@ -19,7 +19,6 @@ db = pathlib.Path(__file__).parent.resolve() / "db" / "mercari.sqlite3"
 
 
 def get_db():
-    # print("get_db:", threading.get_ident())
     if not db.exists():
         yield
 
@@ -29,23 +28,24 @@ def get_db():
         yield conn
     finally:
         conn.close()
-        # print("クローズしましたにゃ : get_db")
 
 # STEP 5-1: set up the database connection
 def setup_database():
-    pass
-    # print("setup_database:", threading.get_ident())
-    # conn = sqlite3.connect(db)
-    # cursor = conn.cursor()
-    # sql_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
-    # with open(sql_file, "r") as f:
-    #     cursor.executescript(f.read())
-    # conn.commit()
-    # conn.close()
+    #print("setup_database:", threading.get_ident())
+    conn = sqlite3.connect(db)
+    cursor = conn.cursor()
+    items_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
+    categories_file = pathlib.Path(__file__).parent.resolve() / "db" / "categories.sql"
+    with open(items_file, "r") as f:
+        cursor.executescript(f.read())
+    with open(categories_file, "r") as f:
+        cursor.executescript(f.read())
+    conn.commit()
+    conn.close()
+    #print("CLOSING")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # print("lifespan:", threading.get_ident())
     setup_database()
     yield
 
@@ -85,10 +85,6 @@ def add_item(
     image: UploadFile = File(...),
     db: sqlite3.Connection = Depends(get_db),
 ):
-    # print("add_item:", threading.get_ident())
-    # print("add_item: すやすや...")
-    # time.sleep(10)
-    # print("add_item: ハッ！")
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
@@ -153,15 +149,21 @@ def search_keyword(keyword):
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute('''
-                        SELECT * FROM items 
-                        WHERE name like ?
+                        SELECT
+                            items.id as id, 
+                            items.name as name, 
+                            categories.name as category, 
+                            items.image as image
+                        FROM items
+                        LEFT JOIN categories
+                            ON categories.id = items.category_id 
+                        WHERE items.name like ?
                        ''', ('%' + keyword + '%',))
         rows = cursor.fetchall()
         col_names = ['name', 'category']
         items = [{colname:row[colname] for colname in col_names} for row in rows]
     
     return {'items' : items}
-
 
 class Item(BaseModel):
     name:str
@@ -174,9 +176,12 @@ def insert_item(item: Item, db: sqlite3.Connection):
     # print("insert_item:", threading.get_ident()) 
     cursor = db.cursor()
     cursor.execute('''
-            INSERT OR IGNORE INTO categories (name)
-            VALUES (?)
-        ''', (item.category,))
+            INSERT INTO categories (name)
+            SELECT ?
+            WHERE NOT EXISTS(
+                   SELECT 1 FROM categories WHERE name = ?
+                   )
+        ''', (item.category, item.category))
     cursor.execute('''
             SELECT id FROM categories 
             WHERE name =  ?
