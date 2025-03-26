@@ -65,6 +65,7 @@ def test_hello(want_status_code, want_body):
     [
         ({"name":"used iPhone 16e", "category":"phone"}, 200),
         ({"name":"", "category":"phone"}, 400),
+        ({"name":"NoSweat", "category":""}, 400),
     ],
 )
 def test_add_item_e2e(args,want_status_code,db_connection):
@@ -86,3 +87,4 @@ def test_add_item_e2e(args,want_status_code,db_connection):
     db_item = cursor.fetchone()
     assert db_item is not None
     assert dict(db_item)["name"] == args["name"]
+    assert dict(db_item)["category"] == args["category"]

@@ -20,13 +20,7 @@ db = pathlib.Path(__file__).parent.resolve() / "db" / "mercari.sqlite3"
 
 
 def get_db():
-    print("get_db:", threading.get_ident())
-    # filename = f'tmp/{datetime.datetime.now()}.txt'
-    # with open(filename, 'w') as f:
-    #     print("strat logging", file = f)
     if not db.exists():
-        # with open(filename, 'w') as f:
-        #     print("実在しませんでした（´-`）.｡oO", file = f)
         yield
 
     conn = sqlite3.connect(db)
@@ -35,7 +29,6 @@ def get_db():
         yield conn
     finally:
         conn.close()
-        print("クローズしましたにゃ : get_db")
 
 # STEP 5-1: set up the database connection
 def setup_database():
@@ -92,10 +85,6 @@ def add_item(
     image: UploadFile = File(None),
     db: sqlite3.Connection = Depends(get_db),
 ):
-    # print("add_item:", threading.get_ident())
-    # print("add_item: すやすや...")
-    # time.sleep(10)
-    # print("add_item: ハッ！")
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
