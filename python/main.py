@@ -89,6 +89,7 @@ def add_item(
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
         raise HTTPException(status_code=400, detail="category is required")
+
     #STEP6 のためにコメントアウトしておく（念のため）
     # if not image:
     #     raise HTTPException(status_code=400, detail="image is required")
@@ -169,7 +170,6 @@ class Item(BaseModel):
     name:str
     category:str
     image:str
-
 
 def insert_item(item: Item, db: sqlite3.Connection):
     # STEP 5 : add an implementation to store an item in the database
