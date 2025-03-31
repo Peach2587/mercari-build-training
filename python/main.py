@@ -31,7 +31,6 @@ def get_db():
 
 # STEP 5-1: set up the database connection
 def setup_database():
-    #print("setup_database:", threading.get_ident())
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
     items_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
@@ -42,7 +41,6 @@ def setup_database():
         cursor.executescript(f.read())
     conn.commit()
     conn.close()
-    #print("CLOSING")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -106,7 +104,6 @@ def add_item(
 
 @app.get("/items")
 def get_items():
-    # print("get_items:", threading.get_ident())
     with sqlite3.connect(db) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -118,9 +115,8 @@ def get_items():
                        ''')
         col_names = [d[0] for d in cursor.description]
         rows = cursor.fetchall()
-        # items = [{colname:row[colname] for colname in col_names} for row in rows]
-    return rows
-    # return {'items' : items}
+        items = [{colname:row[colname] for colname in col_names} for row in rows]
+    return {'items' : items}
 
 @app.get("/items/{item_id}")
 def get_items(item_id:int):
@@ -161,7 +157,7 @@ def search_keyword(keyword):
                         WHERE items.name like ?
                        ''', ('%' + keyword + '%',))
         rows = cursor.fetchall()
-        col_names = ['name', 'category']
+        col_names = ['name', 'category', 'image']
         items = [{colname:row[colname] for colname in col_names} for row in rows]
     
     return {'items' : items}
@@ -173,7 +169,6 @@ class Item(BaseModel):
 
 def insert_item(item: Item, db: sqlite3.Connection):
     # STEP 5 : add an implementation to store an item in the database
-    # print("insert_item:", threading.get_ident()) 
     cursor = db.cursor()
     cursor.execute('''
             INSERT INTO categories (name)
