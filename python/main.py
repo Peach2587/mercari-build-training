@@ -32,7 +32,6 @@ def get_db():
 
 # STEP 5-1: set up the database connection
 def setup_database():
-    print("setup_database:", threading.get_ident())
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
     items_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
@@ -46,7 +45,6 @@ def setup_database():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # print("lifespan:", threading.get_ident())
     setup_database()
     yield
 
@@ -107,17 +105,18 @@ def add_item(
 
 @app.get("/items")
 def get_items():
-    # print("get_items:", threading.get_ident())
     with sqlite3.connect(db) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute('''
-                       SELECT * FROM items
+                    SELECT items.id, items.name, categories.name, items.image
+                    FROM items
+                    LEFT JOIN categories
+                            ON categories.id = items.category_id
                        ''')
         col_names = [d[0] for d in cursor.description]
         rows = cursor.fetchall()
         items = [{colname:row[colname] for colname in col_names} for row in rows]
-    
     return {'items' : items}
 
 @app.get("/items/{item_id}")
@@ -148,15 +147,21 @@ def search_keyword(keyword):
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute('''
-                        SELECT * FROM items 
-                        WHERE name like ?
+                        SELECT
+                            items.id as id, 
+                            items.name as name, 
+                            categories.name as category, 
+                            items.image as image
+                        FROM items
+                        LEFT JOIN categories
+                            ON categories.id = items.category_id 
+                        WHERE items.name like ?
                        ''', ('%' + keyword + '%',))
         rows = cursor.fetchall()
-        col_names = ['name', 'category']
+        col_names = ['name', 'category', 'image']
         items = [{colname:row[colname] for colname in col_names} for row in rows]
     
     return {'items' : items}
-
 
 class Item(BaseModel):
     name:str
@@ -165,13 +170,23 @@ class Item(BaseModel):
 
 def insert_item(item: Item, db: sqlite3.Connection):
     # STEP 5 : add an implementation to store an item in the database
-    # print("insert_item:", threading.get_ident()) 
     cursor = db.cursor()
     # rewrite for STEP6-3
     cursor.execute('''
-            INSERT INTO items (name, category)
-            VALUES (?, ?)
-        ''', (item.name, item.category))
+            INSERT INTO categories (name)
+            SELECT ?
+            WHERE NOT EXISTS(
+                   SELECT 1 FROM categories WHERE name = ?
+                   )
+        ''', (item.category, item.category))
+    cursor.execute('''
+            SELECT id FROM categories 
+            WHERE name =  ?
+        ''', (item.category,))
+    category_id = cursor.fetchone()[0]
+    cursor.execute('''
+            INSERT INTO items (name, category_id, image)
+            VALUES (?, ?, ?)
+        ''', (item.name, category_id, item.image))
     db.commit()
     cursor.close()
-
