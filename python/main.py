@@ -12,6 +12,7 @@ import hashlib
 import sqlite3
 import threading
 import time
+import datetime
 
 # Define the path to the images & sqlite3 database
 images = pathlib.Path(__file__).parent.resolve() / "images"
@@ -47,7 +48,6 @@ async def lifespan(app: FastAPI):
     setup_database()
     yield
 
-
 app = FastAPI(lifespan=lifespan)
 
 logger = logging.getLogger("uvicorn")
@@ -80,7 +80,7 @@ class AddItemResponse(BaseModel):
 def add_item(
     name: str = Form(...),
     category: str = Form(...),
-    image: UploadFile = File(...),
+    image: UploadFile = File(None),
     db: sqlite3.Connection = Depends(get_db),
 ):
     if not name:
@@ -92,13 +92,14 @@ def add_item(
     # if not image:
     #     raise HTTPException(status_code=400, detail="image is required")
 
-    image_bin = image.file.read()
-    hashed_image = hashlib.sha256(image_bin).hexdigest()
+    hashed_image = ""
+    if image:
+        image_bin = image.file.read()
+        hashed_image = hashlib.sha256(image_bin).hexdigest()
+        with open('images/' + hashed_image + '.jpg', 'wb') as f:
+            f.write(image_bin)
     
     insert_item(Item(name=name, category=category, image=hashed_image), db)
-
-    with open('images/' + hashed_image + '.jpg', 'wb') as f:
-        f.write(image_bin)
 
     return AddItemResponse(**{"message": f"item received: {name}"})
 
@@ -170,6 +171,7 @@ class Item(BaseModel):
 def insert_item(item: Item, db: sqlite3.Connection):
     # STEP 5 : add an implementation to store an item in the database
     cursor = db.cursor()
+    # rewrite for STEP6-3
     cursor.execute('''
             INSERT INTO categories (name)
             SELECT ?
