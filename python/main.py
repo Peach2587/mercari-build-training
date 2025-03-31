@@ -89,6 +89,7 @@ def add_item(
         raise HTTPException(status_code=400, detail="name is required")
     if not category:
         raise HTTPException(status_code=400, detail="category is required")
+
     #STEP6 のためにコメントアウトしておく（念のため）
     # if not image:
     #     raise HTTPException(status_code=400, detail="image is required")
@@ -101,6 +102,7 @@ def add_item(
             f.write(image_bin)
     
     insert_item(Item(name=name, category=category, image=hashed_image), db)
+
     return AddItemResponse(**{"message": f"item received: {name}"})
 
 @app.get("/items")
@@ -161,7 +163,6 @@ class Item(BaseModel):
     category:str
     image:str
 
-
 def insert_item(item: Item, db: sqlite3.Connection):
     # STEP 5 : add an implementation to store an item in the database
     # print("insert_item:", threading.get_ident()) 
@@ -173,3 +174,4 @@ def insert_item(item: Item, db: sqlite3.Connection):
         ''', (item.name, item.category))
     db.commit()
     cursor.close()
+
