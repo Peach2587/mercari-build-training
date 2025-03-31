@@ -30,6 +30,7 @@ def get_db():
 
 # STEP 5-1: set up the database connection
 def setup_database():
+    print("Yes")
     pass
 
 
@@ -82,7 +83,6 @@ async def add_item(
     # STEP6 のためにコメントアウトしておく（念のため）
     # if not image:
     #     raise HTTPException(status_code=400, detail="image is required")
-
     image_bin = await image.read()
     hashed_image = hashlib.sha256(image_bin).hexdigest()
     
