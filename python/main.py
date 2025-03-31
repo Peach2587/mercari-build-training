@@ -38,13 +38,10 @@ def setup_database():
     categories_file = pathlib.Path(__file__).parent.resolve() / "db" / "categories.sql"
     with open(items_file, "r") as f:
         cursor.executescript(f.read())
-        print("11111")
     with open(categories_file, "r") as f:
         cursor.executescript(f.read())
-        print("22222")
     conn.commit()
     conn.close()
-    print("yes")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -123,15 +120,19 @@ def get_items():
 
 @app.get("/items/{item_id}")
 def get_items(item_id:int):
-    with open('items.json') as f:
-        d_update = json.load(f)
-    return d_update['items'][item_id]
-
-@app.get("/items/{item_id}")
-def get_items(item_id:int):
-    with open('items.json') as f:
-        d_update = json.load(f)
-    return d_update['items'][item_id]
+    with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('''
+                    SELECT items.id, items.name, categories.name, items.image
+                    FROM items
+                    LEFT JOIN categories
+                            ON categories.id = items.category_id
+                       ''')
+        col_names = [d[0] for d in cursor.description]
+        rows = cursor.fetchall()
+        items = [{colname:row[colname] for colname in col_names} for row in rows]
+    return items[item_id-1]
 
 # get_image is a handler to return an image for GET /images/{filename} .
 @app.get("/image/{image_name}")
