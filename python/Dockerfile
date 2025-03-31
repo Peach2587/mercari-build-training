@@ -5,6 +5,7 @@ RUN addgroup -S mercari && adduser -S trainee -G mercari
 WORKDIR /python
 
 COPY . .
+RUN apk add --no-cache sqlite sqlite-libs
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --upgrade pip setuptools wheel
 

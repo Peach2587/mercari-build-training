@@ -38,10 +38,13 @@ def setup_database():
     categories_file = pathlib.Path(__file__).parent.resolve() / "db" / "categories.sql"
     with open(items_file, "r") as f:
         cursor.executescript(f.read())
+        print("11111")
     with open(categories_file, "r") as f:
         cursor.executescript(f.read())
+        print("22222")
     conn.commit()
     conn.close()
+    print("yes")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
