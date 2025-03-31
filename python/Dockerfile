@@ -7,8 +7,11 @@ USER trainee
 
 WORKDIR /python
 
-COPY requirements.txt .
-
+COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install uvicorn
 
-CMD ["uvicorn",  "main:app",  "--reload",  "--port",  "9000"]
+# CMD ["sleep", "inf"] 
+# CMD ["uvicorn", "main:app",  "--reload",  "--port",  "9000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9000"]
